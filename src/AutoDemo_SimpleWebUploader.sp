@@ -122,13 +122,14 @@ public void RunTask(DataPack hTask)
     // Rewrite in task all data.
     hTask.Reset(true);
     hTask.WriteString(szDemoId);
-    hTask.WriteString(szFullPath);
+    hTask.WriteString(szDemoSource);
     hTask.WriteCell(iChunkId + 1);
     hTask.WriteCell(iChunkCount);
 
     // TODO: рефакторинг запроса под веб
     HTTPRequest hRequest = MakeRequest("upload");
     hRequest.AppendQueryParam("demo_id", szDemoId);
+    hRequest.AppendQueryParam("chunk_id", UTIL_IntToString(iChunkId));
     hRequest.UploadFile(szChunkPath, OnChunkUploaded, hTask);
 }
 
@@ -194,6 +195,14 @@ public void OnDemoCreated(HTTPResponse hResponse, any value, const char[] szErro
     }
 
     // Do nothing?
+}
+
+stock char UTIL_IntToString(int iValue)
+{
+    char szValue[16];
+    IntToString(iValue, szValue, sizeof(szValue));
+
+    return szValue;
 }
 
 stock HTTPRequest MakeRequest(const char[] szMethod)

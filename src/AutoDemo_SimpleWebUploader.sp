@@ -27,7 +27,7 @@ bool    g_bReady;
 
 public Plugin myinfo = {
     description = "Simple uploader for simple web",
-    version = "0.0.1.0",
+    version = "0.0.1.1",
     author = "Bubuni",
     name = "[AutoDemo] Simple Web Uploader",
     url = "https://github.com/Bubuni-Team"
@@ -232,6 +232,7 @@ stock bool UTIL_MakeChunk(const char[] szSource, const char[] szTarget, int iChu
     File hTarget = OpenFile(szTarget, "wb");
     if (!hSource || !hTarget)
     {
+        LogError("Couldn't open source (%x)/target (%x) file", hSource, hTarget);
         hSource.Close();
         hTarget.Close();
         return false;
@@ -241,21 +242,46 @@ stock bool UTIL_MakeChunk(const char[] szSource, const char[] szTarget, int iChu
     {
         if (!hSource.Seek(iChunkSize * iChunk, SEEK_SET))
         {
+            LogError("Couldn't seek required position for chunk %d", iChunk);
             hSource.Close();
             hTarget.Close();
             return false;
         }
     }
 
+    // Kruzya: Для корректности определения, какого размера файл будет,
+    // пересчитаем ChunkSize в зависимости от размера файла.
+    //
+    // 20.06.2021
+
+    iChunkSize = UTIL_Min(iChunkSize, FileSize(szSource) - (iChunkSize * iChunk));
+
     int buffer[4096];
     int iBytesWritten = 0;
     int iChunkRead = 0;
+    int iBytesPerCell = 4;
     do
     {
-        iChunkRead = hSource.Read(buffer, UTIL_Min(sizeof(buffer), (iChunkSize - iBytesWritten) / 4), 4);
-        hTarget.Write(buffer, iChunkRead, 4);
+        // Kruzya: Проблема в том, что если вычитывать и записывать по 1 байту
+        // постоянно, то этот процесс очень тормознуто идёт. Даже обработку
+        // тика тормозит.
+        //
+        // Потому мы пытаемся делать следующий трюк: если нужно прочитать ещё
+        // 16384 байт и более, то читаем в ячейку памяти по 4 байта. А если
+        // менее 16384 байт - тогда по 1 байту в ячейку. Это должно работать
+        // быстро на протяжении 99% файла, и лишь на 1% - подтормаживать.
+        //
+        // 20.06.2021
 
-        iBytesWritten += iChunkRead * 4;
+        if ((iChunkSize - iBytesWritten) < 16384)
+        {
+            iBytesPerCell = 1;
+        }
+
+        iChunkRead = hSource.Read(buffer, UTIL_Min(sizeof(buffer), (iChunkSize - iBytesWritten) / iBytesPerCell), iBytesPerCell);
+
+        hTarget.Write(buffer, iChunkRead, iBytesPerCell);
+        iBytesWritten += iChunkRead * iBytesPerCell;
         if (hSource.EndOfFile())
         {
             break;

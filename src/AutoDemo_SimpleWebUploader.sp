@@ -25,7 +25,7 @@ bool    g_bReady;
 
 public Plugin myinfo = {
     description = "Simple uploader for simple web",
-    version = "0.0.0.2",
+    version = "0.0.0.3",
     author = "Bubuni",
     name = "[AutoDemo] Simple Web Uploader",
     url = "https://github.com/Bubuni-Team"
@@ -161,7 +161,7 @@ public void OnConfigReceived(HTTPResponse hResponse, any value, const char[] szE
         return;
     }
 
-    g_iChunkSize = (view_as<JSONObject>(hResponse.Data)).GetInt("chunk_size") - 1000;
+    g_iChunkSize = (view_as<JSONObject>(hResponse.Data)).GetInt("chunkSize") - 1000;
     g_bReady = true;
 
     LogMessage("[DEBUG] Chunk size - %d bytes", g_iChunkSize);

@@ -25,7 +25,7 @@ bool    g_bReady;
 
 public Plugin myinfo = {
     description = "Simple uploader for simple web",
-    version = "0.0.0.1",
+    version = "0.0.0.2",
     author = "Bubuni",
     name = "[AutoDemo] Simple Web Uploader",
     url = "https://github.com/Bubuni-Team"
@@ -67,12 +67,7 @@ public void OnConfigsExecuted()
 public void OnRequestChunkSize(any data)
 {
     g_bIsPlannedRequestChunkSize = false;
-
-    // TODO: рефакторинг запроса под веб
-    HTTPRequest hRequest = new HTTPRequest(g_szRemoteUrl);
-    hRequest.AppendQueryParam("key", g_szSecretKey);
-    hRequest.AppendQueryParam("operation", "config");
-    hRequest.Get(OnConfigReceived);
+    MakeRequest("config").Get(OnConfigReceived);
 }
 
 public void DemoRec_OnRecordStop(const char[] szDemoId)
@@ -132,9 +127,7 @@ public void RunTask(DataPack hTask)
     hTask.WriteCell(iChunkCount);
 
     // TODO: рефакторинг запроса под веб
-    HTTPRequest hRequest = new HTTPRequest(g_szRemoteUrl);
-    hRequest.AppendQueryParam("key", g_szSecretKey);
-    hRequest.AppendQueryParam("operation", "upload");
+    HTTPRequest hRequest = MakeRequest("upload");
     hRequest.AppendQueryParam("demo_id", szDemoId);
     hRequest.UploadFile(szChunkPath, OnChunkUploaded, hTask);
 }
@@ -147,11 +140,8 @@ void FinishTask(const char[] szDemoId)
 
     JSONObject hRequestBody = JSONObject.FromFile(szJsonPath);
 
-    // TODO: рефакторинг запроса под веб
-    HTTPRequest hRequest = new HTTPRequest(g_szRemoteUrl);
-    hRequest.AppendQueryParam("key", g_szSecretKey);
-    hRequest.AppendQueryParam("operation", "finish");
-    hRequest.Post(hRequestBody, OnDemoCreated);
+    MakeRequest("finish").Post(hRequestBody, OnDemoCreated);
+    hRequestBody.Close();
 }
 
 /**
@@ -204,6 +194,16 @@ public void OnDemoCreated(HTTPResponse hResponse, any value, const char[] szErro
     }
 
     // Do nothing?
+}
+
+stock HTTPRequest MakeRequest(const char[] szMethod)
+{
+    HTTPRequest hRequest = new HTTPRequest(g_szRemoteUrl);
+    hRequest.AppendQueryParam("controller", "api");
+    hRequest.AppendQueryParam("method", szMethod);
+    hRequest.AppendQueryParam("key", g_szSecretKey);
+
+    return hRequest;
 }
 
 stock bool UTIL_MakeChunk(const char[] szSource, const char[] szTarget, int iChunk = 0, int iChunkSize = DEFAULT_CHUNK_SIZE)

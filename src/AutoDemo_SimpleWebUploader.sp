@@ -12,14 +12,15 @@
 #define FPERM_O_ALL         FPERM_O_READ | FPERM_O_WRITE | FPERM_O_EXEC
 #define FPERM_EVERYTHING    FPERM_U_ALL | FPERM_G_ALL | FPERM_O_ALL
 
-char    g_szChunkDirectory[PLATFORM_MAX_PATH];
 char    g_szRemoteUrl[256];
 char    g_szSecretKey[128];
+char    g_szUserAgent[128];
 int     g_iChunkSize;
 int     g_iMaxSpeed;
 
 ConVar  g_hRemoteUrl;
 ConVar  g_hSecretKey;
+ConVar  g_hUserAgent;
 ConVar  g_hMaxSpeed;
 
 bool    g_bIsPlannedRequestChunkSize;
@@ -27,7 +28,7 @@ bool    g_bReady;
 
 public Plugin myinfo = {
     description = "Simple uploader for simple web",
-    version = "0.0.1.1",
+    version = "0.1.0.0",
     author = "Bubuni",
     name = "[AutoDemo] Simple Web Uploader",
     url = "https://github.com/Bubuni-Team"
@@ -35,19 +36,15 @@ public Plugin myinfo = {
 
 public void OnPluginStart()
 {
-    BuildPath(Path_SM, g_szChunkDirectory, sizeof(g_szChunkDirectory), "autodemo_chunks");
-    if (!DirExists(g_szChunkDirectory))
-    {
-        CreateDirectory(g_szChunkDirectory, FPERM_EVERYTHING);
-    }
-
     g_hRemoteUrl = CreateConVar("sm_autodemo_sdu_url", "", "URL to web installation");
     g_hSecretKey = CreateConVar("sm_autodemo_sdu_key", "", "Secret server key");
+    g_hUserAgent = CreateConVar("sm_autodemo_sdu_user_agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) Gecko/20100101 Firefox/88.0");
     g_hMaxSpeed = CreateConVar("sm_autodemo_sdu_max_speed", "0", "Max speed for uploading (in bytes per second). 0 means \"no limit\".", _, true, 0.0);
     AutoExecConfig(true, "autodemo_simpleuploader");
 
     HookConVarChange(g_hRemoteUrl, OnConVarChanged);
     HookConVarChange(g_hSecretKey, OnConVarChanged);
+    HookConVarChange(g_hUserAgent, OnConVarChanged);
     HookConVarChange(g_hMaxSpeed, OnConVarChanged);
 }
 
@@ -61,6 +58,7 @@ public void OnConfigsExecuted()
     g_bReady = false;
     GetConVarString(g_hRemoteUrl, g_szRemoteUrl, sizeof(g_szRemoteUrl));
     GetConVarString(g_hSecretKey, g_szSecretKey, sizeof(g_szSecretKey));
+    GetConVarString(g_hUserAgent, g_szUserAgent, sizeof(g_szUserAgent));
     g_iMaxSpeed = g_hMaxSpeed.IntValue;
 
     if (!g_bIsPlannedRequestChunkSize)
@@ -131,7 +129,6 @@ public void RunTask(DataPack hTask)
     hTask.WriteCell(iChunkId + 1);
     hTask.WriteCell(iChunkCount);
 
-    // TODO: рефакторинг запроса под веб
     HTTPRequest hRequest = MakeRequest("upload", true);
     hRequest.AppendQueryParam("demo_id", szDemoId);
     hRequest.AppendQueryParam("chunk_id", UTIL_IntToString(iChunkId));
@@ -140,9 +137,10 @@ public void RunTask(DataPack hTask)
 
 void FinishTask(const char[] szDemoId)
 {
+    char szBasePath[192];
     char szJsonPath[PLATFORM_MAX_PATH];
-    int iPos = DemoRec_GetDataDirectory(szJsonPath, sizeof(szJsonPath));
-    FormatEx(szJsonPath[iPos], sizeof(szJsonPath)-iPos, "/%s.json", szDemoId);
+    DemoRec_GetDataDirectory(szBasePath, sizeof(szBasePath));
+    FormatEx(szJsonPath, sizeof(szJsonPath), "%s/%s.json", szBasePath, szDemoId);
 
     JSONObject hRequestBody = JSONObject.FromFile(szJsonPath);
 
@@ -212,10 +210,16 @@ stock char UTIL_IntToString(int iValue)
 
 stock HTTPRequest MakeRequest(const char[] szMethod, bool bApplySpeedLimitations = false)
 {
+    PrintToServer("  -> MakeRequest(): base url %s, method %s", g_szRemoteUrl, szMethod);
     HTTPRequest hRequest = new HTTPRequest(g_szRemoteUrl);
     hRequest.AppendQueryParam("controller", "api");
-    hRequest.AppendQueryParam("method", szMethod);
+    hRequest.AppendQueryParam("action", szMethod);
     hRequest.AppendQueryParam("key", g_szSecretKey);
+
+    if (g_szUserAgent[0])
+    {
+        hRequest.SetHeader("User-Agent", g_szUserAgent);
+    }
 
     if (bApplySpeedLimitations)
     {

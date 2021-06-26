@@ -1,0 +1,61 @@
+name: Build and deploy
+
+on:
+  push:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        sm-version: [ '1.10.x', '1.11.x' ]
+    
+    env:
+      OUTPUT_DIR: output
+      BUILDS_URL: ${{ secrets.BUILDS_URL }}
+      BUILDS_KEY: ${{ secrets.BUILDS_KEY }}
+
+    name: "SM version ${{ matrix.sm-version }}"
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup SP
+        uses: rumblefrog/setup-sp@master
+        with:
+          version: ${{ matrix.sm-version }}
+      
+      - name: Fetch required includes
+        run: |
+          mkdir -p include/ripext
+          curl "https://raw.githubusercontent.com/CrazyHackGUT/sm-autodemo/master/scripting/include/AutoDemo.inc" -o include/AutoDemo.inc
+          curl "https://raw.githubusercontent.com/ErikMinekus/sm-ripext/master/pawn/scripting/include/ripext.inc" -o include/ripext.inc
+          curl "https://raw.githubusercontent.com/ErikMinekus/sm-ripext/master/pawn/scripting/include/ripext/http.inc" -o include/ripext/http.inc
+          curl "https://raw.githubusercontent.com/ErikMinekus/sm-ripext/master/pawn/scripting/include/ripext/json.inc" -o include/ripext/json.inc
+      
+      - name: Run compiler
+        run: |
+          export OUTPUT_PATH=$OUTPUT_DIR/addons/sourcemod/plugins/AutoDemo
+          mkdir -p $OUTPUT_PATH
+          spcomp -iinclude src/AutoDemo_SimpleWebUploader.sp -o $OUTPUT_PATH/SimpleWebUploader
+      
+      - name: Make artifact archive
+        if: github.ref == 'refs/heads/main'
+        run: |
+          SMVERSION_FULL=${{ matrix.sm-version }}
+          export SMVERSION_SHORT=${SMVERSION_FULL:0:-2}
+          export ARCHIVE_FILENAME=sm-autodemo-simple-web-uploader.${GITHUB_SHA::7}.$SMVERSION_SHORT.tar.gz
+          export ARCHIVE_PATH=$ARCHIVE_FILENAME
+
+          echo "ARCHIVE_PATH=$ARCHIVE_PATH" >> $GITHUB_ENV
+          echo "SMVERSION_SHORT=$SMVERSION_SHORT" >> $GITHUB_ENV
+
+          cd output
+          tar -cvf ../$ARCHIVE_PATH *
+          cd ..
+      
+      - name: Upload artifact to builds.kruzya.me
+        if: github.ref == 'refs/heads/main'
+        run: |
+          curl "${BUILDS_URL}?secret_key=${BUILDS_KEY}&tags=SourceMod%20${SMVERSION_SHORT}" -F "artifact=@./${ARCHIVE_PATH}"

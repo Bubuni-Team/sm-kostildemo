@@ -1,5 +1,5 @@
 #include <sourcemod>
-#include <autodemo>
+#include <AutoDemo>
 #include <convars>
 #include <ripext>
 

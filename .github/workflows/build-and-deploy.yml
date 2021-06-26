@@ -51,6 +51,10 @@ jobs:
           echo "ARCHIVE_PATH=$ARCHIVE_PATH" >> $GITHUB_ENV
           echo "SMVERSION_SHORT=$SMVERSION_SHORT" >> $GITHUB_ENV
 
+          export OUTPUT_SCRIPTING=$OUTPUT_DIR/addons/sourcemod/scripting
+          mkdir $OUTPUT_SCRIPTING
+          cp src/AutoDemo_SimpleWebUploader.sp $OUTPUT_SCRIPTING
+
           cd output
           tar -cvf ../$ARCHIVE_PATH *
           cd ..

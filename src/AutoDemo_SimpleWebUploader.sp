@@ -28,7 +28,7 @@ bool    g_bReady;
 
 public Plugin myinfo = {
     description = "Simple uploader for simple web",
-    version = "0.1.0.0",
+    version = "0.1.0.1",
     author = "Bubuni",
     name = "[AutoDemo] Simple Web Uploader",
     url = "https://github.com/Bubuni-Team"
@@ -46,11 +46,20 @@ public void OnPluginStart()
     HookConVarChange(g_hSecretKey, OnConVarChanged);
     HookConVarChange(g_hUserAgent, OnConVarChanged);
     HookConVarChange(g_hMaxSpeed, OnConVarChanged);
+
+    RegServerCmd("sm_autodemo_sdu_reconfigure", CmdReconfigure);
 }
 
 public void OnConVarChanged(ConVar hCvar, const char[] szOV, const char[] szNV)
 {
     OnConfigsExecuted();
+}
+
+public Action CmdReconfigure(int iArgC)
+{
+    ReplyToCommand(0, "[SM] Enqueued requesting chunk size");
+    OnRequestChunkSize(0);
+    return Plugin_Handled;
 }
 
 public void OnConfigsExecuted()
@@ -92,11 +101,22 @@ public void DemoRec_OnRecordStop(const char[] szDemoId)
     hTask.WriteCell(0);
     hTask.WriteCell(UTIL_CalculateChunkCount(szFullPath, g_iChunkSize));
 
+    RunTask(hTask, 1.0);
+}
+
+public Action OnRunDelayedTask(Handle hTimer, DataPack hTask)
+{
     RunTask(hTask);
 }
 
-public void RunTask(DataPack hTask)
+public void RunTask(DataPack hTask, float flDelay = -1.0)
 {
+    if (flDelay <= 0.0)
+    {
+        CreateTimer(flDelay, OnRunDelayedTask, hTask);
+        return;
+    }
+
     char szDemoId[40];
     char szDemoSource[PLATFORM_MAX_PATH];
 
@@ -114,12 +134,20 @@ public void RunTask(DataPack hTask)
     }
 
     char szChunkPath[PLATFORM_MAX_PATH];
-    BuildPath(Path_SM, szChunkPath, sizeof(szChunkPath), "data/ad_chunk.bin");
-    if (!UTIL_MakeChunk(szDemoSource, szChunkPath, iChunkId, g_iChunkSize))
+    if (iChunkCount > 1)
     {
-        // TODO: delete all demo chunks from web? or try again create later?
-        hTask.Close();
-        return;
+        BuildPath(Path_SM, szChunkPath, sizeof(szChunkPath), "data/ad_chunk.bin");
+        if (!UTIL_MakeChunk(szDemoSource, szChunkPath, iChunkId, g_iChunkSize))
+        {
+            // TODO: delete all demo chunks from web? or try again create later?
+            hTask.Close();
+            return;
+        }
+    }
+    else
+    {
+        // If chunk count - 1, then we don't need create chunk. Just pass source file.
+        strcopy(szChunkPath, sizeof(szChunkPath), szDemoSource);
     }
 
     // Rewrite in task all data.

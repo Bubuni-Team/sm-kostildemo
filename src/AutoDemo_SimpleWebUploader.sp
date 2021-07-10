@@ -109,7 +109,7 @@ public Action OnRunDelayedTask(Handle hTimer, DataPack hTask)
     RunTask(hTask);
 }
 
-public void RunTask(DataPack hTask, float flDelay = -1.0)
+void RunTask(DataPack hTask, float flDelay = -1.0)
 {
     if (flDelay <= 0.0)
     {

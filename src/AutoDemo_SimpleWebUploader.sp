@@ -28,7 +28,7 @@ bool    g_bReady;
 
 public Plugin myinfo = {
     description = "Simple uploader for simple web",
-    version = "0.1.0.1",
+    version = "0.1.0.2",
     author = "Bubuni",
     name = "[AutoDemo] Simple Web Uploader",
     url = "https://github.com/Bubuni-Team"
@@ -111,7 +111,7 @@ public Action OnRunDelayedTask(Handle hTimer, DataPack hTask)
 
 void RunTask(DataPack hTask, float flDelay = -1.0)
 {
-    if (flDelay <= 0.0)
+    if (flDelay >= 0.0)
     {
         CreateTimer(flDelay, OnRunDelayedTask, hTask);
         return;

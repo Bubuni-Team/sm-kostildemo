@@ -12,12 +12,14 @@
 #define FPERM_O_ALL         FPERM_O_READ | FPERM_O_WRITE | FPERM_O_EXEC
 #define FPERM_EVERYTHING    FPERM_U_ALL | FPERM_G_ALL | FPERM_O_ALL
 
+bool    g_bAutoCleanup;
 char    g_szRemoteUrl[256];
 char    g_szSecretKey[128];
 char    g_szUserAgent[128];
 int     g_iChunkSize;
 int     g_iMaxSpeed;
 
+ConVar  g_hAutoCleanup;
 ConVar  g_hRemoteUrl;
 ConVar  g_hSecretKey;
 ConVar  g_hUserAgent;
@@ -28,7 +30,7 @@ bool    g_bReady;
 
 public Plugin myinfo = {
     description = "Simple uploader for simple web",
-    version = "0.1.0.2",
+    version = "0.2.0.0",
     author = "Bubuni",
     name = "[AutoDemo] Simple Web Uploader",
     url = "https://github.com/Bubuni-Team"
@@ -36,12 +38,14 @@ public Plugin myinfo = {
 
 public void OnPluginStart()
 {
+    g_hAutoCleanup = CreateConVar("sm_autodemo_sdu_auto_cleanup", "0", "Delete uploaded/cancelled demo-records?", _, true, 0.0, true, 1.0); // since 0.2.0.0
     g_hRemoteUrl = CreateConVar("sm_autodemo_sdu_url", "", "URL to web installation");
     g_hSecretKey = CreateConVar("sm_autodemo_sdu_key", "", "Secret server key");
     g_hUserAgent = CreateConVar("sm_autodemo_sdu_user_agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) Gecko/20100101 Firefox/88.0");
     g_hMaxSpeed = CreateConVar("sm_autodemo_sdu_max_speed", "0", "Max speed for uploading (in bytes per second). 0 means \"no limit\".", _, true, 0.0);
     AutoExecConfig(true, "autodemo_simpleuploader");
 
+    HookConVarChange(g_hAutoCleanup, OnConVarChanged);
     HookConVarChange(g_hRemoteUrl, OnConVarChanged);
     HookConVarChange(g_hSecretKey, OnConVarChanged);
     HookConVarChange(g_hUserAgent, OnConVarChanged);
@@ -65,6 +69,7 @@ public Action CmdReconfigure(int iArgC)
 public void OnConfigsExecuted()
 {
     g_bReady = false;
+    g_bAutoCleanup = GetConVarBool(g_hAutoCleanup);
     GetConVarString(g_hRemoteUrl, g_szRemoteUrl, sizeof(g_szRemoteUrl));
     GetConVarString(g_hSecretKey, g_szSecretKey, sizeof(g_szSecretKey));
     GetConVarString(g_hUserAgent, g_szUserAgent, sizeof(g_szUserAgent));
@@ -128,8 +133,7 @@ void RunTask(DataPack hTask, float flDelay = -1.0)
 
     if (iChunkId == iChunkCount)
     {
-        FinishTask(szDemoId);
-        hTask.Close();
+        FinishTask(hTask);
         return;
     }
 
@@ -140,7 +144,7 @@ void RunTask(DataPack hTask, float flDelay = -1.0)
         if (!UTIL_MakeChunk(szDemoSource, szChunkPath, iChunkId, g_iChunkSize))
         {
             // TODO: delete all demo chunks from web? or try again create later?
-            hTask.Close();
+            CancelTask(hTask);
             return;
         }
     }
@@ -163,8 +167,12 @@ void RunTask(DataPack hTask, float flDelay = -1.0)
     hRequest.UploadFile(szChunkPath, OnChunkUploaded, hTask);
 }
 
-void FinishTask(const char[] szDemoId)
+void FinishTask(DataPack hTask)
 {
+    char szDemoId[40];
+    hTask.Reset();
+    hTask.ReadString(szDemoId, sizeof(szDemoId));
+
     char szBasePath[192];
     char szJsonPath[PLATFORM_MAX_PATH];
     DemoRec_GetDataDirectory(szBasePath, sizeof(szBasePath));
@@ -172,8 +180,31 @@ void FinishTask(const char[] szDemoId)
 
     JSONObject hRequestBody = JSONObject.FromFile(szJsonPath);
 
-    MakeRequest("finish").Post(hRequestBody, OnDemoCreated);
+    MakeRequest("finish").Post(hRequestBody, OnDemoCreated, hTask);
     hRequestBody.Close();
+}
+
+void CancelTask(DataPack hTask)
+{
+    char szDemoId[40],
+        szDemoSource[PLATFORM_MAX_PATH];
+
+    hTask.Reset();
+    hTask.ReadString(szDemoId, sizeof(szDemoId));
+    hTask.ReadString(szDemoSource, sizeof(szDemoSource));
+
+    if (g_bAutoCleanup)
+    {
+        // 1. Delete .dem file.
+        DeleteFile(szDemoSource);
+
+        // 2. Delete .json file.
+        int iExtPos = strlen(szDemoSource) - 3;
+        strcopy(szDemoSource[iExtPos], sizeof(szDemoSource), "json");
+        DeleteFile(szDemoSource);
+
+        LogMessage("Deleted demo-record with identifier '%s'", szDemoId);
+    }
 }
 
 /**
@@ -204,14 +235,14 @@ public void OnChunkUploaded(HTTPStatus iStatus, DataPack hTask, const char[] szE
     if (iStatus != HTTPStatus_Created)
     {
         LogError("Couldn't upload chunk: %d (%s)", iStatus, szError);
-        hTask.Close();
+        CancelTask(hTask);
         return;
     }
 
     RunTask(hTask);
 }
 
-public void OnDemoCreated(HTTPResponse hResponse, any value, const char[] szError)
+public void OnDemoCreated(HTTPResponse hResponse, DataPack hTask, const char[] szError)
 {
     if (!hResponse)
     {
@@ -225,7 +256,7 @@ public void OnDemoCreated(HTTPResponse hResponse, any value, const char[] szErro
         return;
     }
 
-    // Do nothing?
+    CancelTask(hTask);
 }
 
 stock char UTIL_IntToString(int iValue)

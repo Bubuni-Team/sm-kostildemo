@@ -34,11 +34,17 @@ jobs:
           curl "https://raw.githubusercontent.com/ErikMinekus/sm-ripext/master/pawn/scripting/include/ripext/http.inc" -o include/ripext/http.inc
           curl "https://raw.githubusercontent.com/ErikMinekus/sm-ripext/master/pawn/scripting/include/ripext/json.inc" -o include/ripext/json.inc
       
+      - name: Prepare output directory
+        run: |
+          export SM_ROOT=$OUTPUT_DIR/addons/sourcemod
+          echo "SM_ROOT=$SM_ROOT" >> $GITHUB_ENV
+          
+          mkdir -p $SM_ROOT/{plugins,scripting}
+          cp src/AutoDemo_SimpleWebUploader.sp $SM_ROOT/scripting/AutoDemo_SimpleWebUploader.sp
+
       - name: Run compiler
         run: |
-          export OUTPUT_PATH=$OUTPUT_DIR/addons/sourcemod/plugins/AutoDemo
-          mkdir -p $OUTPUT_PATH
-          spcomp -iinclude src/AutoDemo_SimpleWebUploader.sp -o $OUTPUT_PATH/SimpleWebUploader
+          spcomp -iinclude src/AutoDemo_SimpleWebUploader.sp -o $SM_ROOT/plugins/AutoDemo/SimpleWebUploader
       
       - name: Make artifact archive
         if: github.ref == 'refs/heads/main'

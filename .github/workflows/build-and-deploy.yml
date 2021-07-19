@@ -39,7 +39,7 @@ jobs:
           export SM_ROOT=$OUTPUT_DIR/addons/sourcemod
           echo "SM_ROOT=$SM_ROOT" >> $GITHUB_ENV
           
-          mkdir -p $SM_ROOT/{plugins,scripting}
+          mkdir -p $SM_ROOT/{plugins/AutoDemo,scripting}
           cp src/AutoDemo_SimpleWebUploader.sp $SM_ROOT/scripting/AutoDemo_SimpleWebUploader.sp
 
       - name: Run compiler

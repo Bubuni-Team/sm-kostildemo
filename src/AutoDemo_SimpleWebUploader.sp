@@ -30,7 +30,7 @@ bool    g_bReady;
 
 public Plugin myinfo = {
     description = "Simple uploader for simple web",
-    version = "0.2.0.0",
+    version = "0.2.0.1",
     author = "Bubuni",
     name = "[AutoDemo] Simple Web Uploader",
     url = "https://github.com/Bubuni-Team"
@@ -244,6 +244,7 @@ public void OnChunkUploaded(HTTPStatus iStatus, DataPack hTask, const char[] szE
 
 public void OnDemoCreated(HTTPResponse hResponse, DataPack hTask, const char[] szError)
 {
+    CancelTask(hTask);
     if (!hResponse)
     {
         LogError("Couldn't create demo in database: %s", szError);
@@ -255,8 +256,6 @@ public void OnDemoCreated(HTTPResponse hResponse, DataPack hTask, const char[] s
         LogError("Received unexpected HTTP status: %d", hResponse.Status);
         return;
     }
-
-    CancelTask(hTask);
 }
 
 stock char UTIL_IntToString(int iValue)

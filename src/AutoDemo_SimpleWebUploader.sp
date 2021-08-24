@@ -243,7 +243,7 @@ public void OnChunkUploaded(HTTPStatus iStatus, any iTask, const char[] szError)
     RunTask(hTask);
 }
 
-public void OnDemoCreated(HTTPResponse hResponse, int iTask, const char[] szError)
+public void OnDemoCreated(HTTPResponse hResponse, any iTask, const char[] szError)
 {
     DataPack hTask = view_as<DataPack>(iTask);
     CancelTask(hTask);

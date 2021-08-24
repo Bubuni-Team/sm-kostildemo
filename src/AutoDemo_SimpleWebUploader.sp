@@ -230,8 +230,9 @@ public void OnConfigReceived(HTTPResponse hResponse, any value, const char[] szE
     LogMessage("[DEBUG] Chunk size - %d bytes", g_iChunkSize);
 }
 
-public void OnChunkUploaded(HTTPStatus iStatus, DataPack hTask, const char[] szError)
+public void OnChunkUploaded(HTTPStatus iStatus, any iTask, const char[] szError)
 {
+    DataPack hTask = view_as<DataPack>(iTask);
     if (iStatus != HTTPStatus_Created)
     {
         LogError("Couldn't upload chunk: %d (%s)", iStatus, szError);
@@ -242,8 +243,9 @@ public void OnChunkUploaded(HTTPStatus iStatus, DataPack hTask, const char[] szE
     RunTask(hTask);
 }
 
-public void OnDemoCreated(HTTPResponse hResponse, DataPack hTask, const char[] szError)
+public void OnDemoCreated(HTTPResponse hResponse, int iTask, const char[] szError)
 {
+    DataPack hTask = view_as<DataPack>(iTask);
     CancelTask(hTask);
     if (!hResponse)
     {

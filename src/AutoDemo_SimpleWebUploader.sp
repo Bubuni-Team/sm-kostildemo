@@ -30,7 +30,7 @@ bool    g_bReady;
 
 public Plugin myinfo = {
     description = "Simple uploader for simple web",
-    version = "0.2.0.1",
+    version = "0.2.0.2",
     author = "Bubuni",
     name = "[AutoDemo] Simple Web Uploader",
     url = "https://github.com/Bubuni-Team"
@@ -52,6 +52,7 @@ public void OnPluginStart()
     HookConVarChange(g_hMaxSpeed, OnConVarChanged);
 
     RegServerCmd("sm_autodemo_sdu_reconfigure", CmdReconfigure);
+    RegServerCmd("sm_autodemo_sdu_upload", CmdUpload);
 }
 
 public void OnConVarChanged(ConVar hCvar, const char[] szOV, const char[] szNV)
@@ -63,6 +64,23 @@ public Action CmdReconfigure(int iArgC)
 {
     ReplyToCommand(0, "[SM] Enqueued requesting chunk size");
     OnRequestChunkSize(0);
+    return Plugin_Handled;
+}
+
+public Action CmdUpload(int iArgC)
+{
+    if (iArgC == 0)
+    {
+        ReplyToCommand(0, "[SM] Usage: sm_autodemo_sdu_upload <demo_id>");
+        return Plugin_Handled;
+    }
+
+    char szDemoId[40];
+    if (iArgC == 1) GetCmdArg(1, szDemoId, sizeof(szDemoId));
+    else GetCmdArgString(szDemoId, sizeof(szDemoId));
+
+    DemoRec_OnRecordStop(szDemoId);
+    ReplyToCommand(0, "[SM] Triggered internal OnRecordStop handler for demo identifier %s", szDemoId);
     return Plugin_Handled;
 }
 

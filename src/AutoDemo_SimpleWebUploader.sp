@@ -30,7 +30,7 @@ bool    g_bReady;
 
 public Plugin myinfo = {
     description = "Simple uploader for simple web",
-    version = "0.2.0.2",
+    version = "0.2.0.3",
     author = "Bubuni",
     name = "[AutoDemo] Simple Web Uploader",
     url = "https://github.com/Bubuni-Team"
@@ -238,7 +238,7 @@ public void OnConfigReceived(HTTPResponse hResponse, any value, const char[] szE
 
     if (hResponse.Status != HTTPStatus_OK)
     {
-        LogError("Received unexpected HTTP status: %d", hResponse.Status);
+        LogError("Received unexpected HTTP status when fetching configuration: %d (%s)", hResponse.Status, szError);
         return;
     }
 
@@ -273,7 +273,7 @@ public void OnDemoCreated(HTTPResponse hResponse, any iTask, const char[] szErro
 
     if (hResponse.Status != HTTPStatus_Created)
     {
-        LogError("Received unexpected HTTP status: %d", hResponse.Status);
+        LogError("Received unexpected HTTP status when uploading a demo information: %d (%s)", hResponse.Status, szError);
         return;
     }
 }

@@ -130,6 +130,7 @@ public void DemoRec_OnRecordStop(const char[] szDemoId)
 public Action OnRunDelayedTask(Handle hTimer, DataPack hTask)
 {
     RunTask(hTask);
+	return Plugin_Continue;
 }
 
 void RunTask(DataPack hTask, float flDelay = -1.0)
@@ -179,9 +180,12 @@ void RunTask(DataPack hTask, float flDelay = -1.0)
     hTask.WriteCell(iChunkId + 1);
     hTask.WriteCell(iChunkCount);
 
+	char szChunkId[16];
+	IntToString(iChunkId, szChunkId, sizeof(szChunkId));
+
     HTTPRequest hRequest = MakeRequest("upload", true);
     hRequest.AppendQueryParam("demo_id", szDemoId);
-    hRequest.AppendQueryParam("chunk_id", UTIL_IntToString(iChunkId));
+    hRequest.AppendQueryParam("chunk_id", szChunkId);
     hRequest.UploadFile(szChunkPath, OnChunkUploaded, hTask);
 }
 
@@ -276,14 +280,6 @@ public void OnDemoCreated(HTTPResponse hResponse, any iTask, const char[] szErro
         LogError("Received unexpected HTTP status when uploading a demo information: %d (%s)", hResponse.Status, szError);
         return;
     }
-}
-
-stock char UTIL_IntToString(int iValue)
-{
-    char szValue[16];
-    IntToString(iValue, szValue, sizeof(szValue));
-
-    return szValue;
 }
 
 stock HTTPRequest MakeRequest(const char[] szMethod, bool bApplySpeedLimitations = false)

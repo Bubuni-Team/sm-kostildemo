@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        sm-version: [ '1.10.x', '1.11.x' ]
+        sm-version: [ '1.10.x', '1.11.x', '1.12.x', '1.13.x' ]
     
     env:
       OUTPUT_DIR: output
